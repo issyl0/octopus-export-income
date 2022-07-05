@@ -18,12 +18,16 @@ arguments = {}
 OptionParser.new do |options|
   options.banner = "Usage: octopus_payments.rb [options]"
 
-  options.on("-f", "--from DATE", "Start date of the period (format: 2022-07-04) to calculate export for") do |from|
+  options.on("-f", "--from DATE", "Start date of the period (format: 2022-07-04) to calculate export for.") do |from|
     arguments[:from] = from
   end
 
-  options.on("-t", "--to DATE", "End date of the period (format: 2022-07-04) to calculate export for") do |to|
+  options.on("-t", "--to DATE", "End date of the period (format: 2022-07-04) to calculate export for.") do |to|
     arguments[:to] = to
+  end
+
+  options.on("-v", "--verbose", "Print all of the individual exports and their price.") do |verbose|
+    arguments[:verbose] = verbose
   end
 end.parse!
 
@@ -74,7 +78,7 @@ query_generated_electricity(from, to).each do |result|
   start = DateTime.parse(result["interval_start"]).strftime("%Y-%m-%dT%H:%M:%SZ")
   payment_per_kwh = calculate_payment_per_kwh(export, start, from, to)
 
-  puts "Exported #{export} kW at #{start}, earning #{payment_per_kwh.round(2)}p."
+  puts "Exported #{export} kW at #{start}, earning #{payment_per_kwh.round(2)}p." if arguments[:verbose]
 
   @totals[arguments[:from]] += payment_per_kwh
 end
