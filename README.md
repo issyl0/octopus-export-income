@@ -37,5 +37,5 @@ TODO:
 
 - [ ] Installation and usage instructions.
 - [ ] Make sure rounding of the displayed numbers is not misleading.
-- [ ] Configurable dates.
+- [x] Configurable dates.
 - [ ] Some kind of web interface?
