@@ -5,9 +5,14 @@ require "active_support/core_ext/date/calculations"
 
 BASE_URL = "https://api.octopus.energy/v1"
 EXPORT_TARRIF = "AGILE-OUTGOING-19-05-13"
-EXPORT_TARRIF_GEO = "E-1R-#{EXPORT_TARRIF}-J"
+POSTCODE = ENV["POSTCODE"]
 EXPORT_MPAN = ENV["OCTOPUS_EXPORT_MPAN"]
 METER_SN = ENV["OCTOPUS_ELECTRICITY_METER_SN"]
+
+unless ENV["OCTOPUS_API_KEY"] && POSTCODE && EXPORT_MPAN && METER_SN
+  puts "Error: Missing environment variables. Check you've set all of `OCTOPUS_API_KEY`, `POSTCODE`, `EXPORT_MPAN` and `METER_SN`."
+  exit(1)
+end
 
 @totals = Hash.new(0)
 @client = Faraday.new do |f|
@@ -36,9 +41,22 @@ if !arguments[:from] || !arguments[:to]
   exit(1)
 end
 
+def find_export_tariff_geo
+  gsp = JSON.parse(@client.get("#{BASE_URL}/industry/grid-supply-points/", { postcode: POSTCODE }).body)
+
+  if gsp["results"].empty?
+    puts "Error: Could not find a grid supply point for the postcode #{POSTCODE}."
+    exit(1)
+  end
+
+  gsp = gsp["results"].first["group_id"].delete_prefix("_")
+
+  "E-1R-#{EXPORT_TARRIF}-#{gsp}"
+end
+
 def query_export_prices(from, to)
   prices_response = @client.get(
-    "#{BASE_URL}/products/#{EXPORT_TARRIF}/electricity-tariffs/#{EXPORT_TARRIF_GEO}/standard-unit-rates/",
+    "#{BASE_URL}/products/#{EXPORT_TARRIF}/electricity-tariffs/#{find_export_tariff_geo}/standard-unit-rates/",
       {
         page_size: 1500,
         period_from: from,

@@ -4,9 +4,10 @@ The Octopus Energy iOS/web app graphs don't show how much we get paid for the en
 
 ```shell
 docker run \
-  -e OCTOPUS_EXPORT_MPAN=$OCTOPUS_EXPORT_MPAN \
-  -e OCTOPUS_ELECTRICITY_METER_SN=$OCTOPUS_ELECTRICITY_METER_SN \
-  -e OCTOPUS_API_KEY=$OCTOPUS_API_KEY \
+  -e OCTOPUS_EXPORT_MPAN="<export_meter_mpan>" \
+  -e OCTOPUS_ELECTRICITY_METER_SN="<serial_number>" \
+  -e OCTOPUS_API_KEY="<api_key>" \
+  -e POSTCODE="<postcode>"
   ghcr.io/issyl0/octopus-export-income:1.0.0-amd64 --from 2022-07-04 --to 2022-07-04
 ```
 
