@@ -36,6 +36,7 @@ def query_export_prices(from, to)
   prices_response = @client.get(
     "#{BASE_URL}/products/#{EXPORT_TARRIF}/electricity-tariffs/#{EXPORT_TARRIF_GEO}/standard-unit-rates/",
       {
+        page_size: 1500,
         period_from: from,
         period_to: to
       }
@@ -47,7 +48,7 @@ def query_generated_electricity(from, to)
   generation_response = @client.get(
     "#{BASE_URL}/electricity-meter-points/#{EXPORT_MPAN}/meters/#{METER_SN}/consumption/",
     {
-      page_size: 48, # 24 hours of half-hourly readings.
+      page_size: 25000,
       period_from: from,
       period_to: to
     }
