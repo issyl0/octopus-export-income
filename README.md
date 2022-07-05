@@ -1,5 +1,15 @@
 The Octopus Energy iOS/web app graphs don't show how much we get paid for the energy the solar panels generate, so we have to work it out for ourselves.
 
+# Install and usage
+
+```shell
+docker run \
+  -e OCTOPUS_EXPORT_MPAN=$OCTOPUS_EXPORT_MPAN \
+  -e OCTOPUS_ELECTRICITY_METER_SN=$OCTOPUS_ELECTRICITY_METER_SN \
+  -e OCTOPUS_API_KEY=$OCTOPUS_API_KEY \
+  ghcr.io/issyl0/octopus-export-income:1.0.0-amd64 --from 2022-07-04 --to 2022-07-04
+```
+
 Output:
 
 ```shell
@@ -30,12 +40,12 @@ Exported 0.182 kW at 2022-07-04T08:30:00Z, earning 3.48p.
 Exported 0.086 kW at 2022-07-04T08:00:00Z, earning 1.7p.
 Exported 0.048 kW at 2022-07-04T07:30:00Z, earning 0.97p.
 Exported 0.001 kW at 2022-07-04T07:00:00Z, earning 0.02p.
-Total for 2022-07-04 to 2022-07-04: 318.66p, or £3.19.
+Total for 2022-07-04: 318.66p, or £3.19.
 ```
 
 TODO:
 
-- [ ] Installation and usage instructions.
+- [x] Installation and usage instructions.
 - [ ] Make sure rounding of the displayed numbers is not misleading.
 - [x] Configurable dates.
 - [ ] Some kind of web interface?
