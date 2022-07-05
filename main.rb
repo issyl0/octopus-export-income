@@ -14,7 +14,6 @@ unless ENV["OCTOPUS_API_KEY"] && POSTCODE && EXPORT_MPAN && METER_SN
   exit(1)
 end
 
-@totals = Hash.new(0)
 @client = Faraday.new do |f|
   f.request :authorization, :basic, ENV["OCTOPUS_API_KEY"], ""
 end
@@ -33,6 +32,10 @@ OptionParser.new do |options|
 
   options.on("-v", "--verbose", "Print all of the individual exports and their price.") do |verbose|
     arguments[:verbose] = verbose
+  end
+
+  options.on("--daily-info", "Print the daily export information as well as the whole period total.") do |daily_info|
+    arguments[:daily_info] = daily_info
   end
 end.parse!
 
@@ -89,20 +92,28 @@ end
 from = DateTime.parse(arguments[:from]).beginning_of_day.strftime("%Y-%m-%dT%H:%M:%SZ")
 to = DateTime.parse(arguments[:to]).end_of_day.strftime("%Y-%m-%dT%H:%M:%SZ")
 
+@totals = Hash.new(0)
+
 query_generated_electricity(from, to).each do |result|
   next if result["consumption"].zero?
 
   export = result["consumption"]
   start = DateTime.parse(result["interval_start"]).strftime("%Y-%m-%dT%H:%M:%SZ")
+  date = DateTime.parse(result["interval_start"]).strftime("%Y-%m-%d")
   payment_per_kwh = calculate_payment_per_kwh(export, start, from, to)
 
+  @totals[date] += payment_per_kwh
   puts "Exported #{export} kW at #{start}, earning #{payment_per_kwh.round(2)}p." if arguments[:verbose]
+end
 
-  @totals[arguments[:from]] += payment_per_kwh
+if arguments[:daily_info]
+  @totals.each do |date, payment|
+    puts "Total for #{date}: £#{(payment / 100).round(2)}."
+  end
 end
 
 message = "Total for #{arguments[:from]}"
 message += " to #{arguments[:to]}" if arguments[:from] != arguments[:to]
-message += ": #{@totals[arguments[:from]].round(2)}p, or £#{(@totals[arguments[:from]] / 100).round(2)}."
+message += ": £#{(@totals.values.sum / 100).round(2)}."
 
 puts message
