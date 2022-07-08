@@ -11,5 +11,5 @@ jobs:
       - uses: actions/checkout@v3
       - uses: ruby/setup-ruby@v1
         with:
-          bundler_cache: true
+          bundler-cache: true
       - run: bundle exec rspec
