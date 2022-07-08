@@ -8,41 +8,7 @@ EXPORT_TARRIF = "AGILE-OUTGOING-19-05-13"
 POSTCODE = ENV["POSTCODE"]
 EXPORT_MPAN = ENV["OCTOPUS_EXPORT_MPAN"]
 METER_SN = ENV["OCTOPUS_ELECTRICITY_METER_SN"]
-
-unless ENV["OCTOPUS_API_KEY"] && POSTCODE && EXPORT_MPAN && METER_SN
-  puts "Error: Missing environment variables. Check you've set all of `OCTOPUS_API_KEY`, `POSTCODE`, `EXPORT_MPAN` and `METER_SN`."
-  exit(1)
-end
-
-@client = Faraday.new do |f|
-  f.request :authorization, :basic, ENV["OCTOPUS_API_KEY"], ""
-end
-
-arguments = {}
-OptionParser.new do |options|
-  options.banner = "Usage: octopus_payments.rb [options]"
-
-  options.on("-f", "--from DATE", "Start date of the period (format: 2022-07-04) to calculate export for.") do |from|
-    arguments[:from] = from
-  end
-
-  options.on("-t", "--to DATE", "End date of the period (format: 2022-07-04) to calculate export for.") do |to|
-    arguments[:to] = to
-  end
-
-  options.on("-v", "--verbose", "Print all of the individual exports and their price.") do |verbose|
-    arguments[:verbose] = verbose
-  end
-
-  options.on("--daily-info", "Print the daily export information as well as the whole period total.") do |daily_info|
-    arguments[:daily_info] = daily_info
-  end
-end.parse!
-
-if !arguments[:from] || !arguments[:to]
-  puts "Error: Please specify the dates with `--from` and `--to`."
-  exit(1)
-end
+OCTOPUS_API_KEY = ENV["OCTOPUS_API_KEY"]
 
 def find_export_tariff_geo
   gsp = JSON.parse(@client.get("#{BASE_URL}/industry/grid-supply-points/", { postcode: POSTCODE }).body)
@@ -79,7 +45,7 @@ def query_generated_electricity(from, to)
     }
   )
 
-  generated_electricity = JSON.parse(generation_response.body)["results"]
+  JSON.parse(generation_response.body)["results"]
 end
 
 def calculate_payment_per_kwh(export, start, from, to)
@@ -89,31 +55,72 @@ def calculate_payment_per_kwh(export, start, from, to)
   export * result["value_exc_vat"]
 end
 
-from = DateTime.parse(arguments[:from]).beginning_of_day.strftime("%Y-%m-%dT%H:%M:%SZ")
-to = DateTime.parse(arguments[:to]).end_of_day.strftime("%Y-%m-%dT%H:%M:%SZ")
-
-@totals = Hash.new(0)
-
-query_generated_electricity(from, to).each do |result|
-  next if result["consumption"].zero?
-
-  export = result["consumption"]
-  start = DateTime.parse(result["interval_start"]).strftime("%Y-%m-%dT%H:%M:%SZ")
-  date = DateTime.parse(result["interval_start"]).strftime("%Y-%m-%d")
-  payment_per_kwh = calculate_payment_per_kwh(export, start, from, to)
-
-  @totals[date] += payment_per_kwh
-  puts "Exported #{export} kW at #{start}, earning #{payment_per_kwh.round(2)}p." if arguments[:verbose]
-end
-
-if arguments[:daily_info]
-  @totals.each do |date, payment|
-    puts "Total for #{date}: £#{(payment / 100).round(2)}."
+def main
+  unless OCTOPUS_API_KEY && POSTCODE && EXPORT_MPAN && METER_SN
+    puts "Error: Missing environment variables. Check you've set all of `OCTOPUS_API_KEY`, `POSTCODE`, `EXPORT_MPAN` and `METER_SN`."
+    exit(1)
   end
+
+  @client = Faraday.new do |f|
+    f.request :authorization, :basic, OCTOPUS_API_KEY, ""
+  end
+
+  arguments = {}
+  OptionParser.new do |options|
+    options.banner = "Usage: octopus_payments.rb [options]"
+
+    options.on("-f", "--from DATE", "Start date of the period (format: 2022-07-04) to calculate export for.") do |from|
+      arguments[:from] = from
+    end
+
+    options.on("-t", "--to DATE", "End date of the period (format: 2022-07-04) to calculate export for.") do |to|
+      arguments[:to] = to
+    end
+
+    options.on("-v", "--verbose", "Print all of the individual exports and their price.") do |verbose|
+      arguments[:verbose] = verbose
+    end
+
+    options.on("--daily-info", "Print the daily export information as well as the whole period total.") do |daily_info|
+      arguments[:daily_info] = daily_info
+    end
+  end.parse!
+
+  if !arguments[:from] || !arguments[:to]
+    puts "Error: Please specify the dates with `--from` and `--to`."
+    exit(1)
+  end
+
+  from = DateTime.parse(arguments[:from]).beginning_of_day.strftime("%Y-%m-%dT%H:%M:%SZ")
+  to = DateTime.parse(arguments[:to]).end_of_day.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+  @totals = Hash.new(0)
+
+  query_generated_electricity(from, to).each do |result|
+    next if result["consumption"].zero?
+
+    export = result["consumption"]
+    start = DateTime.parse(result["interval_start"]).strftime("%Y-%m-%dT%H:%M:%SZ")
+    date = DateTime.parse(result["interval_start"]).strftime("%Y-%m-%d")
+    payment_per_kwh = calculate_payment_per_kwh(export, start, from, to)
+
+    @totals[date] += payment_per_kwh
+    puts "Exported #{export} kW at #{start}, earning #{payment_per_kwh.round(2)}p." if arguments[:verbose]
+  end
+
+  if arguments[:daily_info]
+    @totals.each do |date, payment|
+      puts "Total for #{date}: £#{(payment / 100).round(2)}."
+    end
+  end
+
+  message = "Total for #{arguments[:from]}"
+  message += " to #{arguments[:to]}" if arguments[:from] != arguments[:to]
+  message += ": £#{(@totals.values.sum / 100).round(2)}."
+
+  message
 end
 
-message = "Total for #{arguments[:from]}"
-message += " to #{arguments[:to]}" if arguments[:from] != arguments[:to]
-message += ": £#{(@totals.values.sum / 100).round(2)}."
-
-puts message
+if $0 == __FILE__
+  puts main
+end
