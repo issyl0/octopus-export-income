@@ -8,7 +8,7 @@ docker run \
   -e OCTOPUS_ELECTRICITY_METER_SN="<serial_number>" \
   -e OCTOPUS_API_KEY="<api_key>" \
   -e POSTCODE="<postcode>" \
-  ghcr.io/issyl0/octopus-export-income:latest-amd64 --from 2022-07-04 --to 2022-07-04
+  ghcr.io/issyl0/octopus-export-income:latest --from 2022-07-04 --to 2022-07-04
 ```
 
 Output:
